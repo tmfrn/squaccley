@@ -161,7 +161,7 @@ function renderList(){
         <div class="tick-circle">${v?'✓':''}</div>
         <div class="place-info">
           <div class="place-name">${p.name}</div>
-          <div class="place-meta">${p.region} · ${p.denomination}</div>
+          <div class="place-meta">${p.region?p.region+' · ':''}${p.denomination}</div>
         </div>
         <div class="place-type-badge">${p.type}</div>
       </div>`;
@@ -195,8 +195,10 @@ function updateMapMarkers(){
   Object.values(markers).forEach(m=>map.removeLayer(m));markers={};
   PLACES.forEach(p=>{
     const v=visited.has(p.id);
-    const marker=L.marker([p.lat,p.lon],{icon:makeIcon(v)});
-    marker.bindPopup(`<div class="popup-name">${p.name}</div><div class="popup-meta">${p.region}, ${p.country}</div><button class="popup-btn ${v?'visited-btn':''}" onclick="toggleVisit(${p.id});document.querySelectorAll('.leaflet-popup').forEach(e=>e.remove())">${v?'Remove visit':'Mark visited'}</button>`);
+    const offset=[((p.id*7)%5-2)*0.0003,((p.id*13)%5-2)*0.0003];
+    const marker=L.marker([p.lat+offset[0],p.lon+offset[1]],{icon:makeIcon(v)});
+    const meta=p.region?p.region+', '+p.country:p.country;
+    marker.bindPopup(`<div class="popup-name">${p.name}</div><div class="popup-meta">${meta} · ${p.denomination}</div><button class="popup-btn ${v?'visited-btn':''}" onclick="toggleVisit(${p.id});document.querySelectorAll('.leaflet-popup').forEach(e=>e.remove())">${v?'Remove visit':'Mark visited'}</button>`);
     marker.addTo(map);markers[p.id]=marker;
   });
 }
