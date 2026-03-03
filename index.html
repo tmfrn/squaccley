@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Squaccley</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --stone: #f5f1eb; --stone-dark: #e8e2d9; --ink: #1a1714;
+  --ink-light: #4a4540; --ink-faint: #9a9390; --gold: #b8956a;
+  --gold-light: #d4b896; --visited: #5a7a5a; --visited-light: #e8f0e8;
+  --radius: 4px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--stone); color: var(--ink); font-family: 'Jost', sans-serif; font-weight: 300; min-height: 100vh; }
+header { background: var(--ink); color: var(--stone); padding: 20px 24px 0; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 20px rgba(0,0,0,0.3); }
+.header-inner { max-width: 900px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 16px; }
+.site-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 300; letter-spacing: 0.02em; color: var(--gold-light); line-height: 1; }
+.site-subtitle { font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-top: 3px; font-weight: 400; }
+.progress-numbers { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300; color: var(--gold-light); line-height: 1; text-align: right; }
+.progress-label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-faint); font-weight: 400; }
+.progress-bar-wrap { width: 120px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 1px; margin-top: 6px; margin-left: auto; }
+.progress-bar-fill { height: 100%; background: var(--gold); border-radius: 1px; transition: width 0.6s ease; }
+.tabs { background: var(--ink); border-top: 1px solid rgba(255,255,255,0.06); }
+.tabs-inner { max-width: 900px; margin: 0 auto; display: flex; }
+.tab-btn { flex: 1; background: none; border: none; color: var(--ink-faint); padding: 10px; font-family: 'Jost', sans-serif; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab-btn.active { color: var(--gold-light); border-bottom-color: var(--gold); }
+.controls { max-width: 900px; margin: 0 auto; padding: 16px 16px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.search-wrap { flex: 1; min-width: 160px; position: relative; }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 0.75rem; pointer-events: none; }
+.search-input { width: 100%; padding: 8px 10px 8px 28px; border: 1px solid var(--stone-dark); background: white; border-radius: var(--radius); font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 300; color: var(--ink); outline: none; transition: border-color 0.2s; }
+.search-input:focus { border-color: var(--gold); }
+.filter-select { padding: 8px 10px; border: 1px solid var(--stone-dark); background: white; border-radius: var(--radius); font-family: 'Jost', sans-serif; font-size: 0.75rem; font-weight: 300; color: var(--ink); cursor: pointer; outline: none; }
+.main { max-width: 900px; margin: 0 auto; padding: 16px; }
+.section-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; padding: 16px 0 8px; border-bottom: 1px solid var(--stone-dark); margin-bottom: 2px; }
+.place-item { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; border-radius: var(--radius); padding: 12px 8px; margin: 0 -8px; border-bottom: 1px solid var(--stone-dark); }
+.place-item:hover { background: var(--stone-dark); }
+.place-item.visited { background: var(--visited-light); }
+.place-item.visited:hover { background: #dce8dc; }
+.tick-circle { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--stone-dark); background: white; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: transparent; font-size: 0.7rem; }
+.place-item.visited .tick-circle { background: var(--visited); border-color: var(--visited); color: white; }
+.place-info { flex: 1; min-width: 0; }
+.place-name { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 400; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.place-item.visited .place-name { color: var(--visited); }
+.place-meta { font-size: 0.68rem; color: var(--ink-faint); margin-top: 1px; font-weight: 400; }
+.place-type-badge { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--stone-dark); color: var(--ink-faint); white-space: nowrap; flex-shrink: 0; font-weight: 400; }
+.place-item.visited .place-type-badge { border-color: var(--visited-light); background: var(--visited-light); color: var(--visited); }
+.no-results { text-align: center; padding: 48px 16px; color: var(--ink-faint); font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-style: italic; }
+#map { width: 100%; height: calc(100vh - 160px); border-radius: var(--radius); overflow: hidden; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--ink); color: var(--stone); padding: 10px 20px; border-radius: 30px; font-size: 0.78rem; font-weight: 400; letter-spacing: 0.05em; z-index: 9999; transition: transform 0.3s ease; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.sync-status { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); text-align: center; padding: 8px; opacity: 0.7; }
+.leaflet-popup-content-wrapper { background: var(--ink); color: var(--stone); border-radius: var(--radius); box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-family: 'Jost', sans-serif; }
+.leaflet-popup-tip { background: var(--ink); }
+.leaflet-popup-content { margin: 12px 16px; }
+.popup-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 400; margin-bottom: 4px; }
+.popup-meta { font-size: 0.7rem; color: var(--ink-faint); margin-bottom: 10px; }
+.popup-btn { background: var(--gold); color: var(--ink); border: none; padding: 6px 14px; border-radius: 20px; font-family: 'Jost', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; cursor: pointer; text-transform: uppercase; }
+.popup-btn.visited-btn { background: var(--visited); color: white; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="site-title">Squaccley</div>
+      <div class="site-subtitle">Cathedral Tracker</div>
+    </div>
+    <div>
+      <div class="progress-numbers"><span id="visited-count">0</span> / <span id="total-count">0</span></div>
+      <div class="progress-label">Places Visited</div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tabs-inner">
+      <button class="tab-btn active" id="tab-list" onclick="switchTab('list')">&#9776;&nbsp; List</button>
+      <button class="tab-btn" id="tab-map" onclick="switchTab('map')">&#9671;&nbsp; Map</button>
+    </div>
+  </div>
+</header>
+<div class="controls">
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" class="search-input" placeholder="Search by name or region…" id="search-input" oninput="renderList()">
+  </div>
+  <select class="filter-select" id="filter-country" onchange="renderList()">
+    <option value="">All Countries</option>
+    <option value="England">England</option>
+    <option value="Scotland">Scotland</option>
+    <option value="Wales">Wales</option>
+    <option value="Northern Ireland">N. Ireland</option>
+  </select>
+  <select class="filter-select" id="filter-visited" onchange="renderList()">
+    <option value="">All</option>
+    <option value="visited">Visited</option>
+    <option value="unvisited">Not Yet</option>
+  </select>
+</div>
+<div class="main">
+  <div id="view-list"><div id="places-list"></div></div>
+  <div id="view-map" style="display:none"><div id="map"></div></div>
+</div>
+<div class="sync-status" id="sync-status"></div>
+<div class="toast" id="toast"></div>
+<script>
+const PLACES=[{id:1,name:'Birmingham Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.481225,lon:-1.898907},{id:2,name:'Bristol Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.451654,lon:-2.600799},{id:3,name:'Canterbury Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.279689,lon:1.083183},{id:4,name:'Chelmsford Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.735172,lon:0.472219},{id:5,name:'Chichester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:50.836305,lon:-0.780576},{id:6,name:'Coventry Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.408483,lon:-1.50694},{id:7,name:'Derby Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.92481,lon:-1.47739},{id:8,name:'Ely Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.398632,lon:0.263205},{id:9,name:'Exeter Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:50.722476,lon:-3.529796},{id:10,name:'Gloucester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.867549,lon:-2.24659},{id:11,name:'Guildford Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.241155,lon:-0.590054},{id:12,name:'Hereford Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.054292,lon:-2.716096},{id:13,name:'Leicester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.634679,lon:-1.137053},{id:14,name:'Lichfield Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.685549,lon:-1.83027},{id:15,name:'Lincoln Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.234435,lon:-0.536329},{id:16,name:'Norwich Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.63165,lon:1.300651},{id:17,name:'Oxford Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.750839,lon:-1.25433},{id:18,name:'Peterborough Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.572337,lon:-0.238315},{id:19,name:'Portsmouth Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:50.790514,lon:-1.104233},{id:20,name:'Rochester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.388953,lon:0.503266},{id:21,name:'St Albans Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.75062,lon:-0.342915},{id:22,name:'St Edmundsbury Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.244015,lon:0.716944},{id:23,name:'St Paul\'s Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.513774,lon:-0.098426},{id:24,name:'Salisbury Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.064769,lon:-1.797499},{id:25,name:'Southwark Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.506118,lon:-0.08966},{id:26,name:'Truro Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:50.264141,lon:-5.051179},{id:27,name:'Wells Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.210245,lon:-2.643757},{id:28,name:'Winchester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:51.060009,lon:-1.31218},{id:29,name:'Worcester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:52.18851,lon:-2.22087},{id:30,name:'Blackburn Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.747271,lon:-2.481387},{id:31,name:'Bradford Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.795391,lon:-1.747824},{id:32,name:'Carlisle Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:54.894713,lon:-2.938607},{id:33,name:'Chester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.191853,lon:-2.890308},{id:34,name:'Durham Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:54.773093,lon:-1.576667},{id:35,name:'Liverpool Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.397616,lon:-2.973336},{id:36,name:'Manchester Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.485103,lon:-2.244365},{id:37,name:'Newcastle Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:54.970101,lon:-1.611128},{id:38,name:'Ripon Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:54.134968,lon:-1.520158},{id:39,name:'Sheffield Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.383089,lon:-1.469293},{id:40,name:'Southwell Minster',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.076664,lon:-0.95418},{id:41,name:'Wakefield Cathedral',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.682928,lon:-1.4966847},{id:42,name:'York Minster',type:'Cathedral',denomination:'Anglican',country:'England',region:'',lat:53.962366,lon:-1.081848},{id:43,name:'Brentwood Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:51.619625,lon:0.30656},{id:44,name:'Norwich RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:52.629104,lon:1.283888},{id:45,name:'Northampton Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:52.248029,lon:-0.898486},{id:46,name:'Nottingham Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:52.954671,lon:-1.157097},{id:47,name:'Westminster Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:51.495923,lon:-0.139599},{id:48,name:'Birmingham RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:52.485523,lon:-1.898714},{id:49,name:'Clifton Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:51.459723,lon:-2.616356},{id:50,name:'Shrewsbury Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:52.705288,lon:-2.753993},{id:51,name:'Lancaster Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:54.04682,lon:-2.793757},{id:52,name:'Leeds Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:53.800622,lon:-1.546999},{id:53,name:'Liverpool Metropolitan Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:53.404841,lon:-2.968385},{id:54,name:'Middlesbrough Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:54.522774,lon:-1.213692},{id:55,name:'Newcastle RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:54.969085,lon:-1.619271},{id:56,name:'Salford Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:53.483669,lon:-2.261027},{id:57,name:'Sheffield RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:53.381303,lon:-1.46807},{id:58,name:'Arundel Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:50.855161,lon:-0.559069},{id:59,name:'Plymouth Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:50.373672,lon:-4.105628},{id:60,name:'Portsmouth RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:50.800415,lon:-1.093998},{id:61,name:'Southwark RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'England',region:'',lat:51.49783,lon:-0.107878},{id:62,name:'St Machar\'s Cathedral Aberdeen',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Aberdeen',lat:57.1698,lon:-2.1021},{id:63,name:'Brechin Cathedral',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Angus',lat:56.731944,lon:-2.661667},{id:64,name:'Dornoch Cathedral',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Sutherland',lat:57.881128,lon:-4.029622},{id:65,name:'Dunblane Cathedral',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Stirling',lat:56.189419,lon:-3.96525},{id:66,name:'Dunkeld Cathedral',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Perthshire',lat:56.565,lon:-3.589722},{id:67,name:'St Giles Cathedral Edinburgh',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Edinburgh',lat:55.949444,lon:-3.190833},{id:68,name:'Glasgow Cathedral',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Glasgow',lat:55.863,lon:-4.2346},{id:69,name:'St Magnus Cathedral Kirkwall',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Orkney',lat:58.982222,lon:-2.958889},{id:70,name:'St Moluag\'s Cathedral Lismore',type:'Cathedral',denomination:'Church of Scotland',country:'Scotland',region:'Argyll',lat:56.534444,lon:-5.480556},{id:71,name:'St Mary\'s Cathedral Aberdeen',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Aberdeen',lat:57.1453812,lon:-2.1064199},{id:72,name:'Dundee RC Cathedral',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Dundee',lat:56.4574399,lon:-2.9746985},{id:73,name:'St Mary\'s Cathedral Edinburgh',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Edinburgh',lat:55.956057,lon:-3.187827},{id:74,name:'St Andrew\'s Cathedral Glasgow',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Glasgow',lat:55.855461,lon:-4.252897},{id:75,name:'Motherwell Cathedral',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Lanarkshire',lat:55.79128,lon:-3.98704},{id:76,name:'Paisley Cathedral',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Renfrewshire',lat:55.847533,lon:-4.4165844},{id:77,name:'St Columba\'s Cathedral Oban',type:'Cathedral',denomination:'Catholic',country:'Scotland',region:'Argyll',lat:56.419184,lon:-5.479155},{id:78,name:'St Andrew\'s Cathedral Aberdeen',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Aberdeen',lat:57.1490454,lon:-2.0928955},{id:79,name:'St Paul\'s Cathedral Dundee',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Dundee',lat:56.4610153,lon:-2.9680869},{id:80,name:'St Mary\'s Cathedral Edinburgh',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Edinburgh',lat:55.948595,lon:-3.216269},{id:81,name:'St Mary\'s Cathedral Glasgow',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Glasgow',lat:55.8734329,lon:-4.2749262},{id:82,name:'Inverness Cathedral',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Highland',lat:57.4744737,lon:-4.2291141},{id:83,name:'Cathedral of the Isles Millport',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Ayrshire',lat:55.7555746,lon:-4.924171},{id:84,name:'St Ninian\'s Cathedral Perth',type:'Cathedral',denomination:'Scottish Episcopal',country:'Scotland',region:'Perthshire',lat:56.399139,lon:-3.435444},{id:85,name:'Bangor Cathedral',type:'Cathedral',denomination:'Church in Wales',country:'Wales',region:'Gwynedd',lat:53.226667,lon:-4.1275},{id:86,name:'Brecon Cathedral',type:'Cathedral',denomination:'Church in Wales',country:'Wales',region:'Powys',lat:51.951111,lon:-3.391944},{id:87,name:'Llandaff Cathedral',type:'Cathedral',denomination:'Church in Wales',country:'Wales',region:'Cardiff',lat:51.4957,lon:-3.2179},{id:88,name:'Newport Cathedral',type:'Cathedral',denomination:'Church in Wales',country:'Wales',region:'Newport',lat:51.583056,lon:-2.998611},{id:89,name:'St Asaph Cathedral',type:'Cathedral',denomination:'Church in Wales',country:'Wales',region:'Denbighshire',lat:53.257222,lon:-3.441944},{id:90,name:'St Davids Cathedral',type:'Cathedral',denomination:'Church in Wales',country:'Wales',region:'Pembrokeshire',lat:51.881944,lon:-5.268333},{id:91,name:'Cardiff Metropolitan Cathedral',type:'Cathedral',denomination:'Catholic',country:'Wales',region:'Cardiff',lat:51.48095,lon:-3.17402},{id:92,name:'Swansea Cathedral',type:'Cathedral',denomination:'Catholic',country:'Wales',region:'Swansea',lat:51.632778,lon:-3.943889},{id:93,name:'Wrexham Cathedral',type:'Cathedral',denomination:'Catholic',country:'Wales',region:'Wrexham',lat:53.0474,lon:-2.9986},{id:94,name:'St Patrick\'s Cathedral Armagh',type:'Cathedral',denomination:'Catholic',country:'Northern Ireland',region:'Armagh',lat:54.3522546,lon:-6.6603756},{id:95,name:'St Peter\'s Cathedral Belfast',type:'Cathedral',denomination:'Catholic',country:'Northern Ireland',region:'Belfast',lat:54.5990382,lon:-5.9444082},{id:96,name:'St Eugene\'s Cathedral Derry',type:'Cathedral',denomination:'Catholic',country:'Northern Ireland',region:'Derry',lat:54.9999582,lon:-7.3284602},{id:97,name:'Newry Cathedral',type:'Cathedral',denomination:'Catholic',country:'Northern Ireland',region:'Newry',lat:54.1747441,lon:-6.3376522},{id:98,name:'St Patrick\'s Cathedral Armagh',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Armagh',lat:54.3474522,lon:-6.6562557},{id:99,name:'St Anne\'s Cathedral Belfast',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Belfast',lat:54.6027733,lon:-5.9284759},{id:100,name:'Clogher Cathedral',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Tyrone',lat:54.4107888,lon:-7.1719265},{id:101,name:'Derry Cathedral',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Derry',lat:54.9938163,lon:-7.3230529},{id:102,name:'Down Cathedral Downpatrick',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Down',lat:54.3278839,lon:-5.7211573},{id:103,name:'Dromore Cathedral',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Down',lat:54.4146743,lon:-6.105705},{id:104,name:'Enniskillen Cathedral',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Fermanagh',lat:54.3465806,lon:-7.6410078},{id:105,name:'Lisburn Cathedral',type:'Cathedral',denomination:'Church of Ireland',country:'Northern Ireland',region:'Lisburn',lat:54.5112953,lon:-6.0417997}];
+
+let visited=new Set(),currentTab='list',map=null,markers={};
+const STORAGE_KEY='squaccley_v1';
+
+function loadLocal(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)visited=new Set(JSON.parse(s));}catch(e){}}
+function saveLocal(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify([...visited]));}catch(e){}}
+
+function init(){loadLocal();updateProgress();renderList();document.getElementById('sync-status').textContent='Saving on this device · Cloud sync coming soon';}
+
+function updateProgress(){
+  const total=PLACES.length,done=visited.size;
+  document.getElementById('visited-count').textContent=done;
+  document.getElementById('total-count').textContent=total;
+  document.getElementById('progress-bar').style.width=(total>0?done/total*100:0)+'%';
+}
+
+function toggleVisit(id){
+  if(visited.has(id)){visited.delete(id);showToast('Removed from visited');}
+  else{visited.add(id);showToast('Marked as visited ✓');}
+  saveLocal();updateProgress();renderList();
+  if(currentTab==='map')updateMapMarkers();
+}
+
+function getFiltered(){
+  const search=document.getElementById('search-input').value.toLowerCase().trim();
+  const country=document.getElementById('filter-country').value;
+  const vf=document.getElementById('filter-visited').value;
+  return PLACES.filter(p=>{
+    if(search&&!p.name.toLowerCase().includes(search)&&!p.region.toLowerCase().includes(search))return false;
+    if(country&&p.country!==country)return false;
+    if(vf==='visited'&&!visited.has(p.id))return false;
+    if(vf==='unvisited'&&visited.has(p.id))return false;
+    return true;
+  });
+}
+
+function renderList(){
+  const filtered=getFiltered(),container=document.getElementById('places-list');
+  if(filtered.length===0){container.innerHTML='<div class="no-results">No places found</div>';return;}
+  const groups={};
+  filtered.forEach(p=>{if(!groups[p.country])groups[p.country]=[];groups[p.country].push(p);});
+  const order=['England','Wales','Scotland','Northern Ireland'];
+  let html='';
+  order.forEach(c=>{
+    if(!groups[c])return;
+    html+=`<div class="section-label">${c}</div>`;
+    groups[c].sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{
+      const v=visited.has(p.id);
+      html+=`<div class="place-item ${v?'visited':''}" onclick="toggleVisit(${p.id})">
+        <div class="tick-circle">${v?'✓':''}</div>
+        <div class="place-info">
+          <div class="place-name">${p.name}</div>
+          <div class="place-meta">${p.region} · ${p.denomination}</div>
+        </div>
+        <div class="place-type-badge">${p.type}</div>
+      </div>`;
+    });
+  });
+  container.innerHTML=html;
+}
+
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById('view-list').style.display=tab==='list'?'block':'none';
+  document.getElementById('view-map').style.display=tab==='map'?'block':'none';
+  document.getElementById('tab-list').classList.toggle('active',tab==='list');
+  document.getElementById('tab-map').classList.toggle('active',tab==='map');
+  if(tab==='map'){setTimeout(()=>{if(!map)initMap();else{map.invalidateSize();updateMapMarkers();}},50);}
+}
+
+function initMap(){
+  map=L.map('map',{zoomControl:true}).setView([54.5,-3.5],6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:18}).addTo(map);
+  updateMapMarkers();
+}
+
+function makeIcon(isVisited){
+  const color=isVisited?'#5a7a5a':'#b8956a';
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="30" viewBox="0 0 22 30"><path d="M11 0 C5 0 0 5 0 11 C0 19 11 30 11 30 C11 30 22 19 22 11 C22 5 17 0 11 0Z" fill="${color}" opacity="0.9"/><circle cx="11" cy="11" r="5" fill="white" opacity="0.9"/></svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[22,30],iconAnchor:[11,30],popupAnchor:[0,-30]});
+}
+
+function updateMapMarkers(){
+  Object.values(markers).forEach(m=>map.removeLayer(m));markers={};
+  PLACES.forEach(p=>{
+    const v=visited.has(p.id);
+    const marker=L.marker([p.lat,p.lon],{icon:makeIcon(v)});
+    marker.bindPopup(`<div class="popup-name">${p.name}</div><div class="popup-meta">${p.region}, ${p.country}</div><button class="popup-btn ${v?'visited-btn':''}" onclick="toggleVisit(${p.id});document.querySelectorAll('.leaflet-popup').forEach(e=>e.remove())">${v?'Remove visit':'Mark visited'}</button>`);
+    marker.addTo(map);markers[p.id]=marker;
+  });
+}
+
+let toastTimer;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2000);}
+
+init();
+</script>
+</body>
+</html>
